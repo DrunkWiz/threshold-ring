@@ -1,0 +1,140 @@
+# Threshold — working notes for Claude Code
+
+Read this first. It is the project's memory: what we're building, what is
+already decided, and what must not be claimed. Prior work happened in a
+Claude (Cowork) session; everything that mattered is written down here.
+
+## What this is
+
+A submission for the **Amazon "Build, Ship, Shape" developer hackathon, Ring
+track**. Solo entry. Deadline **24 Oct 2026, 3:00am SGT** (23 Oct, 12:00pm PDT).
+
+Threshold watches a Ring doorbell and turns each event into one plain sentence
+a person can act on. Eleven of twelve doorbell alerts are a cat; the twelfth is
+not, and most people solve that by muting all twelve.
+
+Also entered in two mini challenges: **AWS Builder** (Bedrock is in the
+critical path) and **Open Source** (`ring_client/` is extracted as its own
+MIT-licensed repo). Only one can win alongside the track prize.
+
+## The architecture, in one line each
+
+One pipeline, three consumers. Perception produces one structured event
+(`threshold/events.py`); narration, memory and rules all read it.
+
+- `ring_client/` — typed Ring Partner API client, `urllib` only, plus an
+  offline emulator built from payloads actually captured from the Playground.
+- `threshold/perception.py` — the only model call that sees a picture.
+- `threshold/memory.py` — SQLite baseline; silence, novelty, frequency anomalies.
+- `threshold/narration.py` — deterministic. Announcement, caption, reason.
+- `threshold/rules/` — `compile.py` (model, once) · `evaluate.py` (code, always)
+  · `geometry.py` (point-in-polygon on the real motion zone).
+- `threshold/providers/` — Bedrock with hand-rolled SigV4, a fake rung, a chain.
+- `threshold/server.py` — stdlib HTTP + the WHEP proxy that keeps the token
+  out of the browser.
+- `web/` — no build step, plain ES modules.
+
+`docs/ARCHITECTURE.md` has the diagram and the failure table.
+
+## Decisions — do not undo these without a reason
+
+- **The model compiles; code decides.** English becomes a typed `Rule` once.
+  Every event after that is judged deterministically, with a verdict recorded
+  per clause so the interface can say *why* a rule did not fire. Do not move
+  adjudication into the model to "make it smarter".
+- **Zone membership is arithmetic, never a question to the model.** A model
+  asked "is this in the driveway?" agrees with whatever the prompt implied.
+  There is a test where the model names a zone and the geometry overrules it.
+- **Read-only is a position, not an apology.** The Playground token carries
+  only `ava.v1:read`. Threshold is a witness: it never claims to switch on a
+  light it cannot switch on.
+- **Seeded history is labelled everywhere** — in the DB (`source="seeded"`),
+  the API, the counts and the interface's honesty panel. Ring's history
+  endpoint returns nothing for the Playground device, so a baseline has to be
+  generated; presenting generated data as observed would sink the entry.
+- **Total perception failure still records an event.** Silence is the one
+  thing a doorbell must not do.
+- **No runtime dependencies.** Not for the Ring client, the SigV4 signing, the
+  server, or the front end. A judge clones and runs. Keep it that way: if you
+  are about to add a dependency, find another way first.
+- **The perception prompt forbids guessing intent, character or identity.** A
+  doorbell that calls someone suspicious does real harm. There is a test
+  asserting those lines are present.
+
+## Commands
+
+```bash
+THRESHOLD_OFFLINE=1 python3 -m threshold.server   # emulator, seeded history, canned descriptions
+python3 -m threshold.server                       # live; paste a Playground token in the page
+python3 scripts/run_tests.py                      # 106 tests, ~3s, network blocked by a guard
+```
+
+Token: <https://developer.amazon.com/ring/console/playground> → Generate token.
+Lasts 30 minutes; the page counts it down.
+
+## The state of things
+
+Everything is written and green, **but every Ring call so far has been against
+the emulator.** The sandbox it was built in could not reach
+`api.amazonvision.com`, so the live path — real token, real WHEP session in a
+browser, real Bedrock description — has never run. That is the first job.
+
+### Next, in order
+
+1. **Run it live.** Token, `python3 -m threshold.server`, paste, *Start live
+   view*, *Describe what you see*. Fix what breaks. The WHEP browser path and
+   the token countdown are the two most likely to.
+2. **Add AWS credentials**, confirm Bedrock returns a sensible description of
+   the bird clip the Playground streams, and measure the frame round-trip. If
+   it is slow, narrate from a single keyframe rather than a burst.
+3. **Push to GitHub.** Public before the deadline, MIT licence visible in the
+   About section — the rules ask for that specifically.
+4. **Split `ring_client/` into its own repo** for the Open Source mini
+   challenge, with its own README and the emulator intact.
+5. **Record the video** to the five beats below.
+6. **Fill the blanks** in `docs/SUBMISSION.md`: repo URL, video URL, GitHub
+   username.
+
+### The video — three minutes, five beats
+
+1. **0:00–0:20** A phone with twelve notifications. Eleven are a cat.
+2. **0:20–1:00** Fire Motion. Threshold speaks. Captions on screen.
+3. **1:00–1:40** Type a rule in English; watch it compile against the real
+   zone; fire Vehicle; the phone buzzes on camera.
+4. **1:40–2:20** The pattern view, and this morning's missing carer visit.
+5. **2:20–3:00** Architecture, then what is real and what is seeded, plainly.
+
+Lead with the narration. Judges are not required to watch past three minutes
+and most will not watch past ninety seconds.
+
+## Do not claim
+
+- That Bedrock descriptions are good until one has actually been seen. Every
+  description so far came from the canned fallback.
+- Any latency number until it is measured on the laptop you record on.
+- That "inside a motion zone" narrows anything on the Playground device — its
+  single zone covers the whole frame, and a test says so.
+
+## Things the Ring API taught us the hard way
+
+Full version with severities in `docs/FRICTION_LOG.md` (worth up to a 10%
+judging bonus, so keep adding to it as you hit new ones).
+
+- Base URL is `api.amazonvision.com`, not a ring.com host.
+- Event history is at `/v1/history/devices/{id}/events`, and
+  `/v1/devices/{id}/events` returns **403**, not 404 — which sends you hunting
+  for a permissions problem instead of a typo.
+- The Playground token is read-only and nothing says so; decode the JWT.
+- The Playground gives a working **virtual device** — no hardware, no
+  subscription — even though the dev guide and FAQ both say otherwise.
+- Simulated events never reach event history.
+- CORS blocks browser calls from anywhere but the console, so `Failed to
+  fetch` tells you nothing about whether the endpoint exists.
+
+## House style
+
+- Comments explain *why*, especially where the obvious approach was tried and
+  rejected. Several in this repo record real bugs; leave them.
+- Tests carry the reasoning for the case they cover. New behaviour gets a test
+  that says why it matters, not just that it works.
+- Errors are sentences a person can act on, not relayed status codes.
