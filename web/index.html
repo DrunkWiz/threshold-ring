@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Threshold — a doorbell that explains itself</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the door</a>
+
+<header class="bar">
+  <h1>Threshold</h1>
+  <p class="tagline">A doorbell that explains itself</p>
+  <div class="bar-right">
+    <span id="mode-badge" class="badge" hidden>offline</span>
+    <button id="theme" type="button" class="ghost" aria-pressed="false">Dark</button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- 1. Connection ------------------------------------------------------->
+  <section class="card" aria-labelledby="conn-h">
+    <h2 id="conn-h">Connection</h2>
+    <form id="token-form" class="row">
+      <label class="grow" for="token">Ring Playground token</label>
+      <input id="token" name="token" type="password" autocomplete="off" spellcheck="false"
+             placeholder="Paste the token from the Ring Playground">
+      <button type="submit">Connect</button>
+    </form>
+    <p id="token-state" class="note" role="status">Not connected.</p>
+    <dl id="device-facts" class="facts" hidden></dl>
+  </section>
+
+  <!-- 2. The door --------------------------------------------------------->
+  <section class="card" aria-labelledby="door-h">
+    <h2 id="door-h">The door</h2>
+
+    <div class="stage">
+      <video id="video" playsinline muted autoplay
+             aria-label="Live view from the doorbell camera"></video>
+      <p id="caption" class="caption" hidden></p>
+      <canvas id="grab" hidden></canvas>
+    </div>
+
+    <div class="row wrap">
+      <button id="stream" type="button">Start live view</button>
+      <button id="look" type="button" class="primary">Describe what you see</button>
+      <label class="check">
+        <input id="speak" type="checkbox" checked>
+        Read descriptions aloud
+      </label>
+      <label class="check">
+        <input id="watch" type="checkbox">
+        Watch continuously
+      </label>
+    </div>
+
+    <!-- The product, for someone who cannot see the picture. -->
+    <div class="announce" role="region" aria-labelledby="ann-h">
+      <h3 id="ann-h" class="small">Latest description</h3>
+      <p id="announcement" aria-live="polite" aria-atomic="true">Nothing described yet.</p>
+      <p id="reason" class="note"></p>
+      <p id="latency" class="note tiny"></p>
+    </div>
+  </section>
+
+  <!-- 3. Rules ------------------------------------------------------------>
+  <section class="card" aria-labelledby="rules-h">
+    <h2 id="rules-h">Tell me when…</h2>
+    <p class="note">
+      Write it as a sentence. It is compiled once into a rule with fixed conditions —
+      after that the same event always gives the same answer.
+    </p>
+    <form id="rule-form" class="row">
+      <label class="grow" for="rule-text">New rule</label>
+      <input id="rule-text" name="rule" type="text"
+             placeholder="Tell me if a vehicle stops in the driveway after dark">
+      <button type="submit">Compile</button>
+    </form>
+    <ul id="rules" class="rules"></ul>
+  </section>
+
+  <!-- 4. Pattern ---------------------------------------------------------->
+  <section class="card" aria-labelledby="pattern-h">
+    <h2 id="pattern-h">What is normal for this door</h2>
+    <div id="tiles" class="tiles"></div>
+    <p id="silence" class="alert" hidden></p>
+
+    <figure class="viz-root" aria-labelledby="hm-h" id="heat-figure">
+      <figcaption id="hm-h">Activity by hour and weekday<span class="note"> — darker means busier</span></figcaption>
+      <div id="heatmap" class="heatmap" role="img" aria-describedby="hm-table-toggle"></div>
+      <div class="legend" aria-hidden="true">
+        <span class="note tiny">quiet</span>
+        <span class="ramp"></span>
+        <span class="note tiny">busy</span>
+      </div>
+      <button id="hm-table-toggle" type="button" class="ghost small-btn" aria-expanded="false">
+        Show as a table
+      </button>
+      <div id="hm-table" hidden></div>
+    </figure>
+
+    <div class="row wrap">
+      <button id="seed" type="button" class="ghost">Seed a fortnight of history</button>
+      <span id="counts" class="note"></span>
+    </div>
+  </section>
+
+  <!-- 5. Log -------------------------------------------------------------->
+  <section class="card" aria-labelledby="log-h">
+    <h2 id="log-h">Everything that happened</h2>
+    <ul id="log" class="log"></ul>
+  </section>
+
+  <section class="card honesty" aria-labelledby="honest-h">
+    <h2 id="honest-h">What is real here</h2>
+    <ul>
+      <li><strong>Real:</strong> every Ring API call, the live WHEP video, the motion-zone
+        polygon the rules are evaluated against, and the description of what the camera saw.</li>
+      <li><strong>Seeded:</strong> the fortnight of past events behind the pattern view.
+        Ring's history endpoint returns nothing for this device, so Threshold generates a
+        plausible past and marks every row as seeded. The counts above separate them.</li>
+      <li><strong>Not attempted:</strong> anything that writes. The Playground token is
+        read-only, so Threshold watches and tells you. It never touches the door.</li>
+    </ul>
+  </section>
+</main>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
