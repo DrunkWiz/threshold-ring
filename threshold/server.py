@@ -23,7 +23,7 @@ from typing import Any
 from ring_client import RingError
 
 from .app import Threshold
-from .config import Config
+from .config import Config, load_dotenv
 
 WEB_ROOT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 MAX_BODY = 12 * 1024 * 1024  # a couple of JPEG frames, with room to spare
@@ -160,6 +160,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(config: Config | None = None) -> None:
+    if config is None:
+        load_dotenv()
     config = config or Config.from_env()
     app = Threshold(config)
     app.preset_rules()

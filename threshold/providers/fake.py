@@ -54,7 +54,9 @@ class FakeProvider(Provider):
             }
         return {
             "subject": "animal",
-            "descriptors": ["small", "several"],
+            # Adjectives only. A count word here ("several") collides with the
+            # singular article narration picks: "An animal, small and several".
+            "descriptors": ["small", "brown"],
             "action": "moving across the frame near the feeder",
             "point": {"x": 0.52, "y": 0.44},
             "dwell_s": 6,

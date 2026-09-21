@@ -69,30 +69,39 @@ python3 -m threshold.server                       # live; paste a Playground tok
 python3 scripts/run_tests.py                      # 106 tests, ~3s, network blocked by a guard
 ```
 
+On Windows use `py`, not `python3` — there `python3` is a Microsoft Store stub
+that exits without running. Verified on the record/demo laptop, 21 Sep 2026.
+
 Token: <https://developer.amazon.com/ring/console/playground> → Generate token.
 Lasts 30 minutes; the page counts it down.
 
 ## The state of things
 
-Everything is written and green, **but every Ring call so far has been against
-the emulator.** The sandbox it was built in could not reach
-`api.amazonvision.com`, so the live path — real token, real WHEP session in a
-browser, real Bedrock description — has never run. That is the first job.
+Everything is written and green, and **the live path has now run** — 21 Sep
+2026, on the Windows laptop the demo will be recorded on. Verified against the
+real `api.amazonvision.com`: token accepted, device resolved, scopes confirmed
+`ava.v1:read`, a WHEP session opened through the proxy (201, 1280x720, audio
+and video tracks live), a frame pulled off that stream and carried through
+perception, narration and the rules engine. Nothing in that path needed
+fixing. The token countdown was correct throughout, including at expiry.
+
+**Bedrock has still never run.** Every description to date is the canned
+fallback, so the "do not claim" list below stands unchanged.
 
 ### Next, in order
 
-1. **Run it live.** Token, `python3 -m threshold.server`, paste, *Start live
-   view*, *Describe what you see*. Fix what breaks. The WHEP browser path and
-   the token countdown are the two most likely to.
-2. **Add AWS credentials**, confirm Bedrock returns a sensible description of
+1. **Add AWS credentials**, confirm Bedrock returns a sensible description of
    the bird clip the Playground streams, and measure the frame round-trip. If
    it is slow, narrate from a single keyframe rather than a burst.
-3. **Push to GitHub.** Public before the deadline, MIT licence visible in the
+   Note: `.env` is read only by `scripts/demo.sh`, never by the server
+   itself — set the variables in the environment, or the keys are ignored in
+   silence and you get canned output with no warning.
+2. **Push to GitHub.** Public before the deadline, MIT licence visible in the
    About section — the rules ask for that specifically.
-4. **Split `ring_client/` into its own repo** for the Open Source mini
+3. **Split `ring_client/` into its own repo** for the Open Source mini
    challenge, with its own README and the emulator intact.
-5. **Record the video** to the five beats below.
-6. **Fill the blanks** in `docs/SUBMISSION.md`: repo URL, video URL, GitHub
+4. **Record the video** to the five beats below.
+5. **Fill the blanks** in `docs/SUBMISSION.md`: repo URL, video URL, GitHub
    username.
 
 ### The video — three minutes, five beats

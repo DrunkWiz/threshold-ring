@@ -61,6 +61,10 @@ system that can watch a front door but can never unlock it is the right shape.
 Python 3.11 or newer. **No runtime dependencies** — not for the Ring client,
 not for the AWS calls, not for the server. `git clone` and go.
 
+On Windows, run `py` wherever this README says `python3`. The `python3` on
+PATH there is usually a Microsoft Store stub that prints an install prompt and
+exits without running anything.
+
 ```bash
 # offline: the emulator, a seeded fortnight, canned descriptions
 THRESHOLD_OFFLINE=1 python3 -m threshold.server
@@ -82,6 +86,11 @@ Threshold will use Bedrock:
 export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_REGION=us-east-1
 export THRESHOLD_NTFY_TOPIC=threshold-demo-<something-unique>   # optional phone push
 ```
+
+Or copy `.env.example` to `.env` and fill it in — the server reads it on
+startup, and anything already set in the environment wins over the file. On
+the first line of its output it prints the providers it actually built, so
+`Model providers: fake` means your credentials did not arrive.
 
 With no credentials it still runs end to end, clearly marked as canned. A
 judge who cannot run your project scores what they can see, and that should

@@ -6,6 +6,41 @@ import os
 from dataclasses import dataclass
 
 
+def load_dotenv(path: str | None = None) -> None:
+    """Fold a `.env` file into the environment, leaving anything already set.
+
+    Only `scripts/demo.sh` used to do this, so keys written to `.env` were
+    ignored in silence by `python -m threshold.server`: you got canned
+    descriptions and nothing said why. Entry points call this, library code
+    does not, which is what keeps the tests hermetic on a machine that has a
+    real `.env` sitting in the repo.
+    """
+    if path is None:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, ".env")
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            raw = handle.read()
+    except OSError:
+        return
+
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        # A real environment variable beats the file, so a one-off
+        # `RING_TOKEN=... python -m threshold.server` still wins.
+        os.environ.setdefault(key.strip(), value)
+
+
 @dataclass
 class Config:
     host: str = "127.0.0.1"

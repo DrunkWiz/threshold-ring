@@ -21,4 +21,17 @@ else
 fi
 
 rm -f threshold.db     # a demo should start from a known state
-exec python3 -m threshold.server
+
+# On Windows the `python3` on PATH is usually a Microsoft Store stub that
+# prints an install prompt and exits, so test that it actually runs rather
+# than trusting that it exists.
+if [ -n "${PYTHON:-}" ]; then :
+elif python3 -c '' >/dev/null 2>&1; then PYTHON=python3
+elif py -c '' >/dev/null 2>&1; then PYTHON=py
+elif python -c '' >/dev/null 2>&1; then PYTHON=python
+else
+  echo "No working Python found. Install Python 3.11+ or set PYTHON=..." >&2
+  exit 1
+fi
+
+exec "$PYTHON" -m threshold.server
