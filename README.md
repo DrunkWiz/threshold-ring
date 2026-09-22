@@ -83,9 +83,28 @@ For real descriptions instead of canned ones, set AWS credentials and
 Threshold will use Bedrock:
 
 ```bash
-export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_REGION=us-east-1
+export AWS_BEARER_TOKEN_BEDROCK=...   # a Bedrock API key, one click in the console
+export AWS_REGION=us-east-1
 export THRESHOLD_NTFY_TOPIC=threshold-demo-<something-unique>   # optional phone push
 ```
+
+An IAM access key pair works too — set `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY` and the request is signed with SigV4 instead. The API
+key wins when both are present, being the narrower credential.
+
+### Or run the model on your own machine, for nothing
+
+With [Ollama](https://ollama.com) installed, name any local model that reports
+the `vision` capability:
+
+```bash
+export THRESHOLD_OLLAMA_MODEL=qwen3.5:9b
+```
+
+No account, no key, no bill, and the picture of your front door never leaves
+the house — which is the right default for a camera pointed at where you live.
+It sits between Bedrock and the canned fallback in the chain, so it is used
+when Bedrock is absent or refuses, and skipped entirely when unset.
 
 Or copy `.env.example` to `.env` and fill it in — the server reads it on
 startup, and anything already set in the environment wins over the file. On
@@ -114,8 +133,11 @@ not be a stack trace.
 | `RING_TOKEN` | — | Skip pasting the token in the interface |
 | `RING_DEVICE_ID` | first found | Pin a specific device |
 | `THRESHOLD_PROVIDER` | — | Force a model provider to the front of the chain |
-| `THRESHOLD_PROVIDER_CHAIN` | `bedrock,fake` | The fallback ladder |
+| `THRESHOLD_PROVIDER_CHAIN` | `bedrock,ollama,fake` | The fallback ladder |
 | `THRESHOLD_BEDROCK_MODEL` | Claude Sonnet on Bedrock | Model id |
+| `AWS_BEARER_TOKEN_BEDROCK` | — | A Bedrock API key; beats an access key pair |
+| `THRESHOLD_OLLAMA_MODEL` | — | A local vision model tag; unset means the rung is skipped |
+| `THRESHOLD_OLLAMA_HOST` | `http://127.0.0.1:11434` | Where Ollama is listening |
 | `THRESHOLD_NTFY_TOPIC` | — | ntfy.sh topic for phone push |
 | `THRESHOLD_DB` | `threshold.db` | Where memory lives |
 | `THRESHOLD_PORT` | `8765` | Port |

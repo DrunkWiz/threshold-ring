@@ -16,12 +16,23 @@ from typing import Any
 from .base import Provider, ProviderError
 from .bedrock import BedrockProvider
 from .fake import FakeProvider
+from .ollama import OllamaProvider
 from .salvage import salvage_json
 
-__all__ = ["Provider", "ProviderError", "BedrockProvider", "FakeProvider", "salvage_json", "build_chain", "Chain"]
+__all__ = [
+    "Provider",
+    "ProviderError",
+    "BedrockProvider",
+    "OllamaProvider",
+    "FakeProvider",
+    "salvage_json",
+    "build_chain",
+    "Chain",
+]
 
 _REGISTRY: dict[str, type[Provider]] = {
     "bedrock": BedrockProvider,
+    "ollama": OllamaProvider,
     "fake": FakeProvider,
 }
 
@@ -38,7 +49,7 @@ def build_chain(env: dict[str, str] | None = None) -> list[Provider]:
     primary = env.get("THRESHOLD_PROVIDER", "").strip()
     if primary:
         order.append(primary)
-    for name in (env.get("THRESHOLD_PROVIDER_CHAIN") or "bedrock,fake").split(","):
+    for name in (env.get("THRESHOLD_PROVIDER_CHAIN") or "bedrock,ollama,fake").split(","):
         name = name.strip()
         if name and name not in order:
             order.append(name)

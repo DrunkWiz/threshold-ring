@@ -29,9 +29,9 @@ from threshold.providers.bedrock import BedrockProvider  # noqa: E402
 # likeliest first run looks exactly like a bad password.
 HINTS = {
     "forbidden": [
-        "Enable model access: Bedrock console -> Model access -> this model id.",
-        "Model access is granted per region, so enable it in the region above.",
-        "Otherwise the key may be inactive or lack bedrock:InvokeModel.",
+        "Check the key can call bedrock:InvokeModel - AmazonBedrockFullAccess is the blunt fix.",
+        "Anthropic models may ask a first-time user for use case details before answering.",
+        "The Model access console page is retired: models enable themselves on first invoke.",
     ],
     "http": [
         "A 400 here usually means the model id is not available in this region.",
@@ -50,14 +50,16 @@ def main() -> int:
     load_dotenv()
     provider = BedrockProvider.from_env(dict(os.environ))
     if provider is None:
-        print("No AWS credentials found.")
+        print("No Bedrock credentials found.")
         print()
-        print("Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, either in the")
-        print("environment or in a .env file beside this repo's README.")
+        print("Set AWS_BEARER_TOKEN_BEDROCK to a Bedrock API key from the console,")
+        print("or AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for an IAM access key.")
+        print("Either the environment or a .env file beside the README will do.")
         return 1
 
     print(f"region  {provider.region}")
     print(f"model   {provider.model_id}")
+    print(f"auth    {'Bedrock API key' if provider.api_key else 'IAM access key, SigV4'}")
     print("asking Bedrock for one line of JSON...")
 
     started = time.monotonic()

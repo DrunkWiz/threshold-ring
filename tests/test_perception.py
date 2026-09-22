@@ -7,6 +7,7 @@ from threshold.events import Event
 from threshold.perception import Perception
 from threshold.providers import Chain, ProviderError, build_chain
 from threshold.providers.bedrock import BedrockProvider
+from threshold.providers.ollama import OllamaProvider
 from threshold.providers.fake import FakeProvider
 from threshold.providers.salvage import salvage_json
 
@@ -111,11 +112,65 @@ class Signing(unittest.TestCase):
         self.assertEqual(seen["X-Amz-Security-Token"], "tok")
         self.assertIn("x-amz-security-token", seen["Authorization"])
 
+    def test_a_bedrock_api_key_is_sent_as_a_bearer_token_and_never_signed(self):
+        """A Bedrock API key replaces SigV4 rather than feeding it.
+
+        Signing a request that already carries a bearer token produces a 403
+        that reads like a bad key, so the two paths have to be exclusive.
+        """
+        seen = {}
+
+        def opener(url, headers, body):
+            seen.update(headers)
+            return 200, json.dumps({"content": [{"type": "text", "text": "{}"}]}).encode()
+
+        BedrockProvider(api_key="ABSKtest", opener=opener).complete_json(system="s", prompt="p")
+
+        self.assertEqual(seen["Authorization"], "Bearer ABSKtest")
+        self.assertNotIn("X-Amz-Date", seen)
+        self.assertNotIn("X-Amz-Content-Sha256", seen)
+
+    def test_the_api_key_wins_over_an_access_key_pair(self):
+        """Both can be present — a leftover pair in the shell, a key in .env.
+        The key is the narrower credential, so it is the one to use.
+        """
+        provider = BedrockProvider.from_env({
+            "AWS_BEARER_TOKEN_BEDROCK": "ABSKtest",
+            "AWS_ACCESS_KEY_ID": "AKIAEXAMPLE",
+            "AWS_SECRET_ACCESS_KEY": "secret",
+        })
+        self.assertEqual(provider.api_key, "ABSKtest")
+
+    def test_no_credentials_at_all_drops_the_rung(self):
+        self.assertIsNone(BedrockProvider.from_env({}))
+        self.assertIsNone(BedrockProvider.from_env({"AWS_REGION": "us-east-1"}))
+
     def test_403_is_explained_rather_than_relayed(self):
         provider = BedrockProvider("AK", "sk", opener=lambda *a: (403, b"AccessDenied"))
         with self.assertRaises(ProviderError) as ctx:
             provider.complete_json(system="s", prompt="p")
         self.assertIn("model access", str(ctx.exception))
+
+    def test_what_aws_said_survives_the_403(self):
+        """AWS names the real cause; we used to replace it with a guess.
+
+        A service control policy denying the action cannot be fixed by any of
+        the things our own advice suggests, so swallowing the message sent
+        people to change permissions that were never the problem. Found for
+        real against an account inside an organisation that denies
+        bedrock:CallWithBearerToken.
+        """
+        body = json.dumps({
+            "Message": "User: arn:aws:iam::1:user/x is not authorized to perform: "
+                       "bedrock:CallWithBearerToken with an explicit deny in a service control policy"
+        }).encode()
+        provider = BedrockProvider(api_key="ABSKtest", opener=lambda *a: (403, body))
+
+        with self.assertRaises(ProviderError) as ctx:
+            provider.complete_json(system="s", prompt="p")
+
+        self.assertIn("service control policy", str(ctx.exception))
+        self.assertIn("CallWithBearerToken", str(ctx.exception))
 
     def test_prose_instead_of_json_is_a_malformed_error(self):
         response = json.dumps({"content": [{"type": "text", "text": "I think it is a cat."}]}).encode()
@@ -123,6 +178,59 @@ class Signing(unittest.TestCase):
         with self.assertRaises(ProviderError) as ctx:
             provider.complete_json(system="s", prompt="p")
         self.assertEqual(ctx.exception.kind, "malformed")
+
+
+class LocalModel(unittest.TestCase):
+    """The Ollama rung: a vision model on the same machine as the doorbell."""
+
+    def ollama(self, status, body, seen=None):
+        def opener(url, headers, payload):
+            if seen is not None:
+                seen["url"] = url
+                seen["payload"] = json.loads(payload)
+            return status, body
+
+        return OllamaProvider("a-model", opener=opener)
+
+    def answering(self, content: str) -> bytes:
+        return json.dumps({"message": {"role": "assistant", "content": content}}).encode()
+
+    def test_unconfigured_drops_out_without_touching_the_network(self):
+        """No model named means the rung is absent, not broken. Otherwise every
+        run without Ollama pays for a refused connection before falling back."""
+        self.assertIsNone(OllamaProvider.from_env({}))
+        self.assertIsNone(OllamaProvider.from_env({"THRESHOLD_OLLAMA_MODEL": "   "}))
+
+    def test_named_model_builds_against_localhost_by_default(self):
+        provider = OllamaProvider.from_env({"THRESHOLD_OLLAMA_MODEL": "qwen3.5:9b"})
+        self.assertEqual(provider.model, "qwen3.5:9b")
+        self.assertEqual(provider.host, "http://127.0.0.1:11434")
+
+    def test_images_ride_on_the_message_and_thinking_is_off(self):
+        """Two things this API does differently from Bedrock.
+
+        Images are bare base64 on the message rather than content blocks, and
+        num_predict caps thinking and answer together — so a reasoning model
+        left to think spends the whole budget and returns empty content, which
+        surfaces as "no JSON object" and looks like a parser bug. Found live
+        against qwen3.5:9b.
+        """
+        seen = {}
+        provider = self.ollama(200, self.answering('{"subject": "person"}'), seen)
+
+        result = provider.complete_json(system="s", prompt="p", images=["Zm9v"])
+
+        self.assertEqual(result, {"subject": "person"})
+        self.assertEqual(seen["payload"]["messages"][1]["images"], ["Zm9v"])
+        self.assertIs(seen["payload"]["think"], False)
+        self.assertIn("/api/chat", seen["url"])
+
+    def test_a_missing_model_says_which_one(self):
+        provider = self.ollama(404, b'{"error": "model not found"}')
+        with self.assertRaises(ProviderError) as ctx:
+            provider.complete_json(system="s", prompt="p")
+        self.assertEqual(ctx.exception.kind, "missing_model")
+        self.assertIn("a-model", str(ctx.exception))
 
 
 class Observing(unittest.TestCase):

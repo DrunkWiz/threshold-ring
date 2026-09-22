@@ -85,8 +85,20 @@ and video tracks live), a frame pulled off that stream and carried through
 perception, narration and the rules engine. Nothing in that path needed
 fixing. The token countdown was correct throughout, including at expiry.
 
-**Bedrock has still never run.** Every description to date is the canned
-fallback, so the "do not claim" list below stands unchanged.
+**Bedrock has still never run, and on this AWS account it cannot.** The
+account sits inside an AWS Organization whose service control policy
+explicitly denies `bedrock:CallWithBearerToken`, so a Bedrock API key is
+refused no matter what permissions are attached. An IAM access key with SigV4
+calls `bedrock:InvokeModel` instead, a different action that the policy may
+not deny — untested as of 23 Sep, and worth five minutes because it would
+restore the AWS Builder entry.
+
+**Perception now runs locally instead**, on a vision model through Ollama
+(`threshold/providers/ollama.py`). Verified end to end on 23 Sep: the model
+described a test image correctly and the pipeline carried it through
+narration. It costs nothing, needs no account, and means the picture never
+leaves the machine — which is a better position for a doorbell than the one
+it replaced, not merely a consolation.
 
 The repo is on GitHub at <https://github.com/DrunkWiz/threshold-ring>, still
 private. Working copy lives in `Documents/Github/`; the folder is still named
@@ -100,13 +112,11 @@ Threshold imports; the two will need keeping in step if the client changes.
 
 ### Next, in order
 
-1. **Add AWS credentials**, confirm Bedrock returns a sensible description of
-   the bird clip the Playground streams, and measure the frame round-trip. If
-   it is slow, narrate from a single keyframe rather than a burst.
-   Copy `.env.example` to `.env` and fill it in — the server reads it at
-   startup and anything already in the environment wins over the file. The
-   first line of its output names the providers it actually built, so
-   `Model providers: fake` means the credentials did not arrive.
+1. **Describe the real bird clip** with the local model and measure the frame
+   round-trip. A 1x1 test image went through in under a second, which says
+   nothing useful: a 1280x720 frame is a different proposition. If it is slow,
+   narrate from a single keyframe rather than a burst. Needs a Playground
+   token, so it has to be done in one sitting.
 2. **Record the video** to the five beats below, then put its URL in the
    `## Video` section of `docs/SUBMISSION.md` — the last blank left.
 3. **Make both repos public** before the deadline — `threshold-ring` and
@@ -127,8 +137,11 @@ and most will not watch past ninety seconds.
 
 ## Do not claim
 
-- That Bedrock descriptions are good until one has actually been seen. Every
-  description so far came from the canned fallback.
+- That Bedrock works on this account. It is refused by an organisation policy,
+  and the SigV4 route has not been tried.
+- That the local model describes the *doorbell* well. It has only been shown a
+  1x1 test image so far. It was right about that image, which proves the
+  wiring and nothing about the product.
 - Any latency number until it is measured on the laptop you record on.
 - That "inside a motion zone" narrows anything on the Playground device — its
   single zone covers the whole frame, and a test says so.

@@ -136,9 +136,14 @@ event, and compiling an English sentence into a typed rule. Called directly over
 HTTPS with hand-rolled SigV4 rather than boto3, to keep the project
 dependency-free — the signing is about sixty lines and worked without drama.
 The Anthropic Messages format on Bedrock made the image path simple. What needs
-work: a first-time 403 for a model you have not enabled reads as a credentials
-problem, and the fix (enabling model access in the console) is not mentioned in
-the error. Would we build with it again: yes.
+work: onboarding a brand-new account is where the time goes. The Model access
+page was retired during the hackathon window — serverless models now enable
+themselves on first invocation, which is a genuine improvement — but a
+first-time 403 still reads as a credentials problem, and the error does not
+mention that Anthropic models may want use case details submitted first. The
+guidance written before that change is still all over the internet, so you go
+looking for a console page that no longer exists. Would we build with it
+again: yes.
 
 ## Open Source mini challenge
 

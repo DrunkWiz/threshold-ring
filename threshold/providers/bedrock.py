@@ -30,6 +30,26 @@ def _sign(key: bytes, msg: str) -> bytes:
     return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
 
 
+def _aws_message(body: str) -> str:
+    """The sentence AWS actually wrote, out of the JSON it wraps it in.
+
+    Worth the trouble: a refusal can be a missing permission, a model that is
+    not enabled, or an organisation's service control policy denying the whole
+    action — and only AWS knows which. Guessing on its behalf sends people to
+    fix the wrong thing.
+    """
+    try:
+        parsed = json.loads(body)
+    except (TypeError, ValueError):
+        return body.strip()[:300]
+    if isinstance(parsed, dict):
+        for key in ("Message", "message", "errorMessage"):
+            value = parsed.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()[:300]
+    return body.strip()[:300]
+
+
 def _signing_key(secret: str, date_stamp: str, region: str, service: str) -> bytes:
     k_date = _sign(("AWS4" + secret).encode("utf-8"), date_stamp)
     k_region = _sign(k_date, region)
@@ -42,9 +62,10 @@ class BedrockProvider(Provider):
 
     def __init__(
         self,
-        access_key: str,
-        secret_key: str,
+        access_key: str = "",
+        secret_key: str = "",
         *,
+        api_key: str = "",
         session_token: str | None = None,
         region: str = DEFAULT_REGION,
         model_id: str = DEFAULT_MODEL,
@@ -53,6 +74,7 @@ class BedrockProvider(Provider):
     ):
         self.access_key = access_key
         self.secret_key = secret_key
+        self.api_key = api_key
         self.session_token = session_token
         self.region = region
         self.model_id = model_id
@@ -61,13 +83,18 @@ class BedrockProvider(Provider):
 
     @classmethod
     def from_env(cls, env: dict[str, str]) -> "BedrockProvider | None":
+        # AWS_BEARER_TOKEN_BEDROCK is AWS's own name for a Bedrock API key, so
+        # a key generated in the console works with no renaming. It wins over
+        # an access key pair because it is the narrower credential.
+        api_key = (env.get("AWS_BEARER_TOKEN_BEDROCK") or "").strip()
         ak = env.get("AWS_ACCESS_KEY_ID")
         sk = env.get("AWS_SECRET_ACCESS_KEY")
-        if not ak or not sk:
+        if not api_key and not (ak and sk):
             return None  # unconfigured: drop out of the chain, no network call
         return cls(
-            ak,
-            sk,
+            ak or "",
+            sk or "",
+            api_key=api_key,
             session_token=env.get("AWS_SESSION_TOKEN"),
             region=env.get("AWS_REGION") or DEFAULT_REGION,
             model_id=env.get("THRESHOLD_BEDROCK_MODEL") or DEFAULT_MODEL,
@@ -85,11 +112,20 @@ class BedrockProvider(Provider):
         except Exception as exc:
             raise ProviderError(f"could not reach Bedrock: {exc}", kind="unreachable", retryable=True) from exc
 
-    def _invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
-        host = f"bedrock-runtime.{self.region}.amazonaws.com"
-        path = f"/model/{self.model_id}/invoke"
-        url = f"https://{host}{path}"
-        body = json.dumps(payload).encode("utf-8")
+    def _auth_headers(self, host: str, path: str, body: bytes) -> dict[str, str]:
+        """Bearer token if there is one, otherwise sign the request.
+
+        AWS added Bedrock API keys after this provider was written. They are a
+        single value and a plain header, so they are the easier path and the
+        one the console now pushes you towards; the SigV4 branch stays because
+        IAM access keys are still what a long-lived deployment is given.
+        """
+        if self.api_key:
+            return {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
 
         now = datetime.datetime.now(datetime.timezone.utc)
         amz_date = now.strftime("%Y%m%dT%H%M%SZ")
@@ -132,14 +168,25 @@ class BedrockProvider(Provider):
         }
         if self.session_token:
             headers["X-Amz-Security-Token"] = self.session_token
+        return headers
+
+    def _invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+        host = f"bedrock-runtime.{self.region}.amazonaws.com"
+        path = f"/model/{self.model_id}/invoke"
+        url = f"https://{host}{path}"
+        body = json.dumps(payload).encode("utf-8")
+
+        headers = self._auth_headers(host, path, body)
 
         status, raw = self._opener(url, headers, body)
         text = raw.decode("utf-8", "replace")
 
         if status == 403:
+            detail = _aws_message(text)
             raise ProviderError(
-                "Bedrock refused the request; check the key, the region, and that "
-                "model access is enabled for this model id",
+                "Bedrock refused the request; check the credential, the region, and that "
+                "model access is enabled for this model id."
+                + (f" AWS said: {detail}" if detail else ""),
                 kind="forbidden",
             )
         if status == 429:
