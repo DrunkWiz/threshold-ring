@@ -93,6 +93,11 @@ private. Working copy lives in `Documents/Github/`; the folder is still named
 `Amazon_Ring_hacakthon` from before the rename, which is cosmetic but
 confusing.
 
+`ring_client/` has been split out to <https://github.com/DrunkWiz/ring-client>
+(22 Sep, also private), with its own README, LICENSE and network-guarded
+runner. Its 15 tests pass standalone. The copy in this repo remains the one
+Threshold imports; the two will need keeping in step if the client changes.
+
 ### Next, in order
 
 1. **Add AWS credentials**, confirm Bedrock returns a sensible description of
@@ -102,14 +107,11 @@ confusing.
    startup and anything already in the environment wins over the file. The
    first line of its output names the providers it actually built, so
    `Model providers: fake` means the credentials did not arrive.
-2. **Make the repo public** before the deadline, with the MIT licence visible
-   in the About section and a description written — the rules ask for that
-   specifically. It is private as of 21 Sep.
-3. **Split `ring_client/` into its own repo** for the Open Source mini
-   challenge, with its own README and the emulator intact.
-4. **Record the video** to the five beats below.
-5. **Fill the blanks** in `docs/SUBMISSION.md`: repo URL, video URL, GitHub
-   username.
+2. **Record the video** to the five beats below, then put its URL in the
+   `## Video` section of `docs/SUBMISSION.md` — the last blank left.
+3. **Make both repos public** before the deadline — `threshold-ring` and
+   `ring-client`. The rules ask specifically for the MIT licence visible in
+   About; GitHub already detects it on both, and both have descriptions.
 
 ### The video — three minutes, five beats
 

@@ -1,7 +1,8 @@
 # Devpost submission — draft answers
 
-Still to fill before submitting: the video URL, and the contribution URL for
-the `ring-client` repo once it is split out. Repo URL and username are in.
+Still to fill before submitting: the video URL. Everything else is in.
+
+Both repos are private as of 22 Sep and must be public before the deadline.
 
 ---
 
@@ -141,7 +142,7 @@ the error. Would we build with it again: yes.
 
 ## Open Source mini challenge
 
-- **Contribution URL:** <!-- the ring-client repo, once it is split out -->
+- **Contribution URL:** <https://github.com/DrunkWiz/ring-client>
 - **Repo URL:** <https://github.com/DrunkWiz/threshold-ring>
 - **GitHub username:** DrunkWiz
 - **What it is.** `ring-client` — a typed, dependency-free Python client for the
