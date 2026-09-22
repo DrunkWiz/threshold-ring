@@ -1,6 +1,7 @@
 # Devpost submission — draft answers
 
-Fill the repo URL, video URL and GitHub username before submitting.
+Still to fill before submitting: the video URL, and the contribution URL for
+the `ring-client` repo once it is split out. Repo URL and username are in.
 
 ---
 
@@ -13,6 +14,10 @@ Fill the repo URL, video URL and GitHub username before submitting.
 Eleven of your twelve doorbell alerts are a cat. Threshold describes who is
 actually at the door, learns what is normal for it, and only interrupts you
 for reasons you wrote yourself.
+
+## Video
+
+<!-- the three-minute demo, unlisted or public, once recorded -->
 
 ## Track
 
@@ -60,7 +65,7 @@ browser APIs.
   that answers wins. With no AWS account at all the project still runs end to
   end on canned descriptions and says so in the interface.
 
-106 tests run in about three seconds with the network cut off by a guard in
+112 tests run in about two seconds with the network cut off by a guard in
 the test runner.
 
 ## Challenges
@@ -136,9 +141,9 @@ the error. Would we build with it again: yes.
 
 ## Open Source mini challenge
 
-- **Contribution URL:** <!-- the ring-client repo -->
-- **Repo URL:** <!-- the Threshold repo -->
-- **GitHub username:** <!-- yours -->
+- **Contribution URL:** <!-- the ring-client repo, once it is split out -->
+- **Repo URL:** <https://github.com/DrunkWiz/threshold-ring>
+- **GitHub username:** DrunkWiz
 - **What it is.** `ring-client` — a typed, dependency-free Python client for the
   Ring Partner API, MIT licensed, extracted from this project and released as
   its own repository. It ships an offline emulator built from real captured

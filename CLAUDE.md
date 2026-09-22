@@ -66,7 +66,7 @@ One pipeline, three consumers. Perception produces one structured event
 ```bash
 THRESHOLD_OFFLINE=1 python3 -m threshold.server   # emulator, seeded history, canned descriptions
 python3 -m threshold.server                       # live; paste a Playground token in the page
-python3 scripts/run_tests.py                      # 106 tests, ~3s, network blocked by a guard
+python3 scripts/run_tests.py                      # 112 tests, ~2s, network blocked by a guard
 ```
 
 On Windows use `py`, not `python3` — there `python3` is a Microsoft Store stub
@@ -88,16 +88,23 @@ fixing. The token countdown was correct throughout, including at expiry.
 **Bedrock has still never run.** Every description to date is the canned
 fallback, so the "do not claim" list below stands unchanged.
 
+The repo is on GitHub at <https://github.com/DrunkWiz/threshold-ring>, still
+private. Working copy lives in `Documents/Github/`; the folder is still named
+`Amazon_Ring_hacakthon` from before the rename, which is cosmetic but
+confusing.
+
 ### Next, in order
 
 1. **Add AWS credentials**, confirm Bedrock returns a sensible description of
    the bird clip the Playground streams, and measure the frame round-trip. If
    it is slow, narrate from a single keyframe rather than a burst.
-   Note: `.env` is read only by `scripts/demo.sh`, never by the server
-   itself — set the variables in the environment, or the keys are ignored in
-   silence and you get canned output with no warning.
-2. **Push to GitHub.** Public before the deadline, MIT licence visible in the
-   About section — the rules ask for that specifically.
+   Copy `.env.example` to `.env` and fill it in — the server reads it at
+   startup and anything already in the environment wins over the file. The
+   first line of its output names the providers it actually built, so
+   `Model providers: fake` means the credentials did not arrive.
+2. **Make the repo public** before the deadline, with the MIT licence visible
+   in the About section and a description written — the rules ask for that
+   specifically. It is private as of 21 Sep.
 3. **Split `ring_client/` into its own repo** for the Open Source mini
    challenge, with its own README and the emulator intact.
 4. **Record the video** to the five beats below.

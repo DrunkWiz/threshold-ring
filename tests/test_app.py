@@ -12,6 +12,7 @@ import urllib.request
 from threshold.app import Threshold
 from threshold.config import Config
 from threshold.providers import Chain
+from threshold.providers.bedrock import BedrockProvider
 from threshold.providers.fake import FakeProvider
 from threshold.server import Handler
 
@@ -164,6 +165,69 @@ class Http(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as ctx:
             self.post("/api/nope", {})
         self.assertEqual(ctx.exception.code, 404)
+
+
+class BedrockThroughTheWholePipeline(unittest.TestCase):
+    """The Bedrock rung end to end, with only its transport stubbed.
+
+    The signing, the 403 and the JSON parsing are all covered in
+    test_perception.py. What is not covered there is the seam: whether a
+    working Bedrock is actually *used* by the pipeline, and whether a refused
+    one stays visible in the result instead of being quietly swallowed. A
+    silent fallback is the one failure that looks exactly like success, and
+    it is the bug this project has already hit once.
+    """
+
+    def threshold(self, providers):
+        config = Config(db_path=os.path.join(tempfile.mkdtemp(), "t.db"), offline=True)
+        instance = Threshold(config, chain=Chain(providers))
+        instance.connect()
+        return instance
+
+    def bedrock(self, status: int, body: bytes) -> BedrockProvider:
+        return BedrockProvider("AKIAEXAMPLE", "secret", opener=lambda *a: (status, body))
+
+    def answering(self, payload: dict) -> bytes:
+        text = json.dumps(payload)
+        return json.dumps({"content": [{"type": "text", "text": text}]}).encode()
+
+    def test_a_working_bedrock_is_the_one_that_describes_the_event(self):
+        body = self.answering({
+            "subject": "person",
+            "descriptors": ["tall"],
+            "action": "standing at the door",
+            "point": {"x": 0.5, "y": 0.5},
+            "dwell_s": 3,
+            "confidence": 0.9,
+            "summary": "Someone is at the door.",
+        })
+        result = self.threshold([self.bedrock(200, body), FakeProvider()]).observe(frames=["x"])
+
+        self.assertEqual(result["event"]["provider"], "bedrock")
+        self.assertEqual(result["event"]["summary"], "Someone is at the door.")
+        # The zone clause is geometry, not the model: the point above is inside
+        # the emulator's only motion zone, so narration has to mention it.
+        self.assertEqual(
+            result["narration"]["announcement"],
+            "Someone, tall, is standing at the door. In the motion zone.",
+        )
+        self.assertTrue(all(attempt["ok"] for attempt in result["provider_attempts"]))
+
+    def test_a_refused_bedrock_falls_back_and_the_result_still_says_so(self):
+        """Model access is off by default in a fresh AWS account, so a 403 is
+        the likeliest first run of all. The door must still speak, and the
+        interface must be able to report which rung was skipped and why —
+        otherwise credentials that never worked look identical to ones that
+        did.
+        """
+        result = self.threshold([self.bedrock(403, b"AccessDenied"), FakeProvider()]).observe(frames=["x"])
+
+        self.assertEqual(result["event"]["provider"], "fake")
+        self.assertTrue(result["narration"]["announcement"])
+
+        refused = [attempt for attempt in result["provider_attempts"] if not attempt["ok"]]
+        self.assertEqual([attempt["provider"] for attempt in refused], ["bedrock"])
+        self.assertIn("model access", refused[0]["reason"])
 
 
 if __name__ == "__main__":

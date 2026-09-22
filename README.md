@@ -92,6 +92,16 @@ startup, and anything already set in the environment wins over the file. On
 the first line of its output it prints the providers it actually built, so
 `Model providers: fake` means your credentials did not arrive.
 
+To check the credentials on their own, before starting anything:
+
+```bash
+python3 scripts/check_bedrock.py
+```
+
+One call, and it says which of the key, the region or model access is the
+problem — all three otherwise look identical from inside the app, because the
+provider chain is built to degrade quietly.
+
 With no credentials it still runs end to end, clearly marked as canned. A
 judge who cannot run your project scores what they can see, and that should
 not be a stack trace.
@@ -116,7 +126,7 @@ not be a stack trace.
 python3 scripts/run_tests.py
 ```
 
-106 tests, about three seconds, **no network**: the runner replaces
+112 tests, about two seconds, **no network**: the runner replaces
 `socket.connect` so anything reaching past localhost fails loudly. That is a
 guard, not a claim — and `tests/test_network_guard.py` proves the guard bites.
 
