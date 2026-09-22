@@ -21,6 +21,17 @@ SUBJECTS = ("person", "vehicle", "animal", "package", "nothing", "unknown")
 TRIGGERS = ("motion", "package", "vehicle", "ding", "manual")
 
 
+def article(word: str) -> str:
+    """"a" or "an" for a subject word.
+
+    Lives here, beside the vocabulary it applies to, because narration, the
+    rules engine and the memory anomalies all build sentences from the same
+    subjects. It was previously private to the rules engine, which is how
+    "a animal" survived in the other two for so long.
+    """
+    return "an" if word[:1].lower() in "aeiou" else "a"
+
+
 def _clamp(value: Any, low: float, high: float, default: float) -> float:
     try:
         return max(low, min(high, float(value)))

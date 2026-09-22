@@ -192,7 +192,21 @@ class BedrockProvider(Provider):
         if status == 429:
             raise ProviderError("Bedrock throttled the request", kind="throttled", retryable=True)
         if status >= 400:
-            raise ProviderError(f"Bedrock returned {status}: {text[:300]}", kind="http", retryable=status >= 500)
+            detail = _aws_message(text)
+            # Bedrock returns 404 when an account has not filled in Anthropic's
+            # use case form — an onboarding state reported as a missing
+            # resource, which reads like a wrong model id and sends you
+            # checking the one thing that is right. Seen on 23 Sep against an
+            # account whose text call had already succeeded.
+            if "use case details" in detail.lower():
+                raise ProviderError(
+                    "Bedrock wants Anthropic's use case details form filled in for this "
+                    "account before it will answer, and reports that as a 404. Submit it "
+                    f"in the Bedrock console, then wait 15 minutes. AWS said: {detail}",
+                    kind="use_case_form",
+                    retryable=True,
+                )
+            raise ProviderError(f"Bedrock returned {status}: {detail}", kind="http", retryable=status >= 500)
         try:
             return json.loads(text)
         except json.JSONDecodeError as exc:

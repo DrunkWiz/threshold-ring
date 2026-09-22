@@ -24,7 +24,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from .events import Event
+from .events import Event, article
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -196,7 +196,7 @@ class Memory:
                     kind="novelty",
                     severity="notice",
                     message=(
-                        f"This is the first time a {event.subject} has been at the door "
+                        f"This is the first time {article(event.subject)} {event.subject} has been at the door "
                         f"around {lt.tm_hour:02d}:00."
                     ),
                     detail={"hour": lt.tm_hour, "known_hours": known_hours},
@@ -214,7 +214,7 @@ class Memory:
                 Anomaly(
                     kind="frequency",
                     severity="concern",
-                    message=f"That is {len(same) + 1} visits by a {event.subject} within an hour.",
+                    message=f"That is {len(same) + 1} visits by {article(event.subject)} {event.subject} within an hour.",
                     detail={"count": len(same) + 1, "window_s": 3600},
                 )
             )

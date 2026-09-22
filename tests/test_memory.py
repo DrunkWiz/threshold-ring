@@ -120,6 +120,21 @@ class Frequency(Fixture):
         found = self.memory.check_event(Event(at=self.now, subject="person"))
         self.assertNotIn("frequency", [a.kind for a in found])
 
+    def test_the_message_says_an_animal_not_a_animal(self):
+        """The rules engine got its article right and these two did not.
+
+        It reached the screen during a live run — "That is 7 visits by a
+        animal within an hour" — which is the kind of thing a judge reads as
+        carelessness everywhere else in the project.
+        """
+        for minutes in (50, 35, 20):
+            self.memory.record(Event(at=self.now - minutes * 60, subject="animal"))
+        found = self.memory.check_event(Event(at=self.now, subject="animal"))
+
+        message = next(a.message for a in found if a.kind == "frequency")
+        self.assertIn("by an animal", message)
+        self.assertNotIn("a animal", message)
+
 
 if __name__ == "__main__":
     unittest.main()

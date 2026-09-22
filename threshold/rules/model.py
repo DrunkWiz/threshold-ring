@@ -16,7 +16,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from ..events import SUBJECTS
+from ..events import SUBJECTS, article
 
 CHANNELS = ("screen", "speech", "push")
 _TIME = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)$")
@@ -113,7 +113,7 @@ class Rule:
 
     def explain(self) -> str:
         """The rule in a sentence, so the person can check the compilation."""
-        who = "anything" if self.subject == "any" else f"a {self.subject}"
+        who = "anything" if self.subject == "any" else f"{article(self.subject)} {self.subject}"
         where = {"any": "", "inside": " inside a motion zone", "outside": " outside every motion zone"}.get(
             self.zone, f" in zone {self.zone[:8]}"
         )

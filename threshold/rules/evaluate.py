@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..events import Event
+from ..events import article as _article
 from .model import Rule
 
 
@@ -53,9 +54,6 @@ class Decision:
         }
 
 
-def _article(word: str) -> str:
-    """"a" or "an". Small thing, but "saw a animal" reads as a bug to a judge."""
-    return "an" if word[:1].lower() in "aeiou" else "a"
 
 
 def _in_window(minute: int, start: int, end: int) -> bool:

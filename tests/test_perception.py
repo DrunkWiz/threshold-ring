@@ -172,6 +172,26 @@ class Signing(unittest.TestCase):
         self.assertIn("service control policy", str(ctx.exception))
         self.assertIn("CallWithBearerToken", str(ctx.exception))
 
+    def test_the_use_case_form_is_named_rather_than_reported_as_a_404(self):
+        """Bedrock reports an onboarding state as a missing resource.
+
+        A 404 sends you checking the model id, which is the one thing that is
+        not wrong. Seen for real on an account whose text-only call had
+        already succeeded, so the credentials were demonstrably fine.
+        """
+        body = json.dumps({
+            "message": "Model use case details have not been submitted for this account. "
+                       "Fill out the Anthropic use case details form before using the model."
+        }).encode()
+        provider = BedrockProvider("AK", "sk", opener=lambda *a: (404, body))
+
+        with self.assertRaises(ProviderError) as ctx:
+            provider.complete_json(system="s", prompt="p")
+
+        self.assertEqual(ctx.exception.kind, "use_case_form")
+        self.assertTrue(ctx.exception.retryable)
+        self.assertIn("use case details form", str(ctx.exception))
+
     def test_prose_instead_of_json_is_a_malformed_error(self):
         response = json.dumps({"content": [{"type": "text", "text": "I think it is a cat."}]}).encode()
         provider = BedrockProvider("AK", "sk", opener=lambda *a: (200, response))
