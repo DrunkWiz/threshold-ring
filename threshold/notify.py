@@ -26,6 +26,32 @@ class Delivery:
     detail: str = ""
 
 
+_HEADER_PUNCTUATION = {
+    "—": "-",    # em dash — every caption contains one
+    "–": "-",
+    "‘": "'",
+    "’": "'",
+    "“": '"',
+    "”": '"',
+    "…": "...",
+    " ": " ",
+}
+
+
+def _header_safe(text: str) -> str:
+    """Make a string safe to put in an HTTP header.
+
+    Headers are latin-1, and the narration uses typographic punctuation on
+    purpose: every caption is "<subject> — <action>". Encoding that em dash
+    raised UnicodeEncodeError inside urllib, which arrived here as "push
+    unreachable" — so the push channel failed on essentially every real
+    notification, while working fine for any test message typed in ASCII.
+    """
+    for fancy, plain in _HEADER_PUNCTUATION.items():
+        text = text.replace(fancy, plain)
+    return text.encode("latin-1", "replace").decode("latin-1")
+
+
 @dataclass
 class Notifier:
     """`speech` and `screen` are delivered by the browser; recorded here so the
@@ -52,7 +78,7 @@ class Notifier:
         if not self.ntfy_topic:
             return Delivery("push", False, "no push topic configured (set THRESHOLD_NTFY_TOPIC)")
         url = f"{self.ntfy_server.rstrip('/')}/{self.ntfy_topic}"
-        headers = {"Title": title[:120], "Content-Type": "text/plain; charset=utf-8"}
+        headers = {"Title": _header_safe(title)[:120], "Content-Type": "text/plain; charset=utf-8"}
         data = body.encode("utf-8")
         try:
             if self.opener:
