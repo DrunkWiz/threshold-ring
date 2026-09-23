@@ -63,10 +63,14 @@ browser APIs.
   the real vertices, never a question put to the model.
 - **Providers** — a fallback chain. A provider with no credentials drops out
   locally with no network call; one that fails mid-turn steps aside; the first
-  that answers wins. With no AWS account at all the project still runs end to
-  end on canned descriptions and says so in the interface.
+  that answers wins. Bedrock leads; behind it sits a local vision model over
+  Ollama, for anyone who would rather no picture of their front door left the
+  house; behind that, canned descriptions. With no AWS account and no Ollama
+  the project still runs end to end, and the interface says plainly which rung
+  answered — `described by fake · skipped bedrock` — rather than passing a
+  canned sentence off as perception.
 
-112 tests run in about two seconds with the network cut off by a guard in
+122 tests run in about two seconds with the network cut off by a guard in
 the test runner.
 
 ## Challenges
@@ -135,15 +139,33 @@ simulate devices — worth stating on the page, because the name suggests more.
 event, and compiling an English sentence into a typed rule. Called directly over
 HTTPS with hand-rolled SigV4 rather than boto3, to keep the project
 dependency-free — the signing is about sixty lines and worked without drama.
-The Anthropic Messages format on Bedrock made the image path simple. What needs
-work: onboarding a brand-new account is where the time goes. The Model access
-page was retired during the hackathon window — serverless models now enable
-themselves on first invocation, which is a genuine improvement — but a
-first-time 403 still reads as a credentials problem, and the error does not
-mention that Anthropic models may want use case details submitted first. The
-guidance written before that change is still all over the internet, so you go
-looking for a console page that no longer exists. Would we build with it
-again: yes.
+The Anthropic Messages format on Bedrock made the image path simple, and SigV4
+signing worked first time.
+
+What needs work is onboarding a new account, where every hour went. Three
+things in sequence, each of which reported itself as something it was not:
+
+- The console offers a **Bedrock API key in one click**. Ours was refused,
+  because the account sits in an AWS Organization whose service control policy
+  denies `bedrock:CallWithBearerToken`. An IAM access key signing the same
+  request with SigV4 calls `bedrock:InvokeModel` and works fine. Nothing in
+  the console hints that the easy path is the one your organisation forbids,
+  and the refusal arrives only at first invocation.
+- The **Model access page was retired** during the hackathon window. Models
+  now enable on first invoke, which is a real improvement, but every piece of
+  guidance written before it — and that is nearly all of it — sends you to a
+  page that no longer exists.
+- A model that had **just answered a text call** then returned **404** on the
+  next one: *"Model use case details have not been submitted."* A 404 means
+  the thing is not there, so it sends you checking the model id, which the
+  previous successful call had already proved correct.
+
+Each was survivable; together they cost more than building the integration
+did. The fix is mostly wording: a 403 for an onboarding state, a note in the
+API key panel that an SCP can forbid it, and an error that names the form.
+
+Would we build with it again: yes. The signing is sixty lines, the image path
+is clean, and once it answers it answers.
 
 ## Open Source mini challenge
 

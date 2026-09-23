@@ -66,7 +66,7 @@ One pipeline, three consumers. Perception produces one structured event
 ```bash
 THRESHOLD_OFFLINE=1 python3 -m threshold.server   # emulator, seeded history, canned descriptions
 python3 -m threshold.server                       # live; paste a Playground token in the page
-python3 scripts/run_tests.py                      # 112 tests, ~2s, network blocked by a guard
+python3 scripts/run_tests.py                      # 122 tests, ~2s, network blocked by a guard
 ```
 
 On Windows use `py`, not `python3` — there `python3` is a Microsoft Store stub
