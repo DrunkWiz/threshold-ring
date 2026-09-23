@@ -69,6 +69,24 @@ class Silence(Fixture):
         self.assertEqual(anomaly.kind, "silence")
         self.assertIn("Monday", anomaly.message)
 
+    def test_the_message_is_a_sentence_not_a_template(self):
+        """This is the line a family member reads when a carer has not come.
+
+        The format string produced "there are usually about 1", which is the
+        kind of seam that makes someone trust the rest of it less — and it is
+        the most emotionally loaded sentence the product produces.
+        """
+        from threshold.memory import _usually
+
+        self.assertEqual(_usually(0.9), "there is usually one visit")
+        self.assertEqual(_usually(1.0), "there is usually one visit")
+        self.assertEqual(_usually(3.4), "there are usually about 3 visits")
+
+        self.carer_fortnight(skip_today=True)
+        message = self.memory.check_silence().message
+        self.assertNotIn("about 1.", message)
+        self.assertIn("usually", message)
+
     def test_stays_quiet_when_the_visit_happened(self):
         self.carer_fortnight()
         self.memory.record(Event(at=self.now - 600, subject="person"))

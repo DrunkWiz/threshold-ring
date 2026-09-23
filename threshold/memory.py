@@ -57,6 +57,19 @@ class Anomaly:
     detail: dict[str, Any]
 
 
+def _usually(expected: float) -> str:
+    """How often this hour is normally busy, in words rather than a template.
+
+    "there are usually about 1" is what a format string produces and what a
+    person notices immediately. This sentence is the one a family member
+    reads when a carer has not arrived, so it should not sound assembled.
+    """
+    count = round(expected)
+    if count <= 1:
+        return "there is usually one visit"
+    return f"there are usually about {count} visits"
+
+
 class Memory:
     def __init__(self, path: str = "threshold.db", *, clock=time.time):
         self.path = path
@@ -250,7 +263,7 @@ class Memory:
             severity="concern",
             message=(
                 f"Nothing has happened at the door this hour. On a normal {weekday} "
-                f"around {lt.tm_hour:02d}:00 there are usually about {expected:.0f}."
+                f"around {lt.tm_hour:02d}:00 {_usually(expected)}."
             ),
             detail={"bucket": key, "expected_per_week": expected},
         )
