@@ -117,8 +117,11 @@
   <section class="card honesty" aria-labelledby="honest-h">
     <h2 id="honest-h">What is real here</h2>
     <ul>
-      <li><strong>Real:</strong> every Ring API call, the live WHEP video, the motion-zone
-        polygon the rules are evaluated against, and the description of what the camera saw.</li>
+      <li><strong>Real:</strong> every Ring API call, the live WHEP video, and the
+        motion-zone polygon the rules are evaluated against.</li>
+      <li><strong>Depends:</strong> the description itself. A model looked at the frame
+        only when the line under it names one. <em>described by fake</em> means no model
+        ran and you are reading a canned sentence that fits any picture.</li>
       <li><strong>Seeded:</strong> the fortnight of past events behind the pattern view.
         Ring's history endpoint returns nothing for this device, so Threshold generates a
         plausible past and marks every row as seeded. The counts above separate them.</li>

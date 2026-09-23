@@ -49,7 +49,8 @@ Stated here, in the interface, and out loud in the demo video.
 
 | | |
 |---|---|
-| **Real** | Every Ring API call. The live video: a genuine WHEP session with a real SDP exchange. The motion-zone polygon the rules are evaluated against. The description of what the camera saw. |
+| **Real** | Every Ring API call. The live video: a genuine WHEP session with a real SDP exchange. The motion-zone polygon the rules are evaluated against. |
+| **Depends** | The description itself. A model looked at the frame only when the line beneath it names one — `described by bedrock`, or a local model. `described by fake` means no model ran and the sentence is canned, fitting any picture equally well. The interface says which every time, because a doorbell that sounds equally confident either way is the problem this project exists to fix. |
 | **Seeded** | The fortnight of past events behind the pattern view. Ring's history endpoint returns an empty list for the Playground device even after firing an event, so Threshold generates a plausible past, marks every row `source="seeded"`, and counts them separately everywhere. The generator is `threshold/seed.py`. |
 | **Not attempted** | Anything that writes. The Playground token carries only `ava.v1:read`, so Threshold is a witness, not a controller. It never touches the door, and it never claims to switch on a light it cannot switch on. |
 
