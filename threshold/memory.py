@@ -286,7 +286,11 @@ class Memory:
             return None
 
         start = now - (lt.tm_min * 60 + lt.tm_sec)
-        if self.between(start, now + 1):
+        # An event that recorded nothing is not something happening. Looking and
+        # seeing an empty step is exactly the case this anomaly is about, and
+        # counting it as activity meant that with "watch continuously" on — an
+        # observation every 15 seconds — the alert could never fire at all.
+        if [e for e in self.between(start, now + 1) if e.subject != "nothing"]:
             return None
 
         weekday = time.strftime("%A", lt)

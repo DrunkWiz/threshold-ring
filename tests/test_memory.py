@@ -87,6 +87,18 @@ class Silence(Fixture):
         self.assertNotIn("about 1.", message)
         self.assertIn("usually", message)
 
+    def test_looking_and_seeing_nothing_does_not_count_as_something(self):
+        """An event whose subject is "nothing" must not suppress the alert.
+
+        It is the same observation the anomaly is reporting. Counting it as
+        activity meant that with "watch continuously" on — an observation
+        every fifteen seconds — the silence alert could never fire, which
+        quietly disabled the one feature aimed at the caretaking case.
+        """
+        self.carer_fortnight(skip_today=True)
+        self.memory.record(Event(at=self.now - 60, subject="nothing"))
+        self.assertIsNotNone(self.memory.check_silence())
+
     def test_stays_quiet_when_the_visit_happened(self):
         self.carer_fortnight()
         self.memory.record(Event(at=self.now - 600, subject="person"))
