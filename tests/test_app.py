@@ -167,6 +167,79 @@ class Http(unittest.TestCase):
         self.assertEqual(ctx.exception.code, 404)
 
 
+class RulesSurviveARestart(unittest.TestCase):
+    """A rule is something a person wrote, so losing it on restart makes
+    "tell me when..." a promise the product does not keep."""
+
+    def setUp(self):
+        self.db = os.path.join(tempfile.mkdtemp(), "t.db")
+
+    def boot(self) -> Threshold:
+        """A fresh process against the same database."""
+        instance = Threshold(Config(db_path=self.db, offline=True))
+        instance.connect()
+        return instance
+
+    def test_a_written_rule_is_still_there_next_time(self):
+        first = self.boot()
+        first.add_rule("Notify my phone if a vehicle waits more than 45 seconds at night")
+        first.memory.close()
+
+        names = [r.name for r in self.boot().rules]
+        self.assertIn("Notify my phone if a vehicle waits more than 45 seconds at n", names)
+
+    def test_a_removed_rule_stays_removed(self):
+        first = self.boot()
+        rule_id = first.add_rule("Tell me when an animal is seen")["rule"]["id"]
+        self.assertTrue(first.remove_rule(rule_id))
+        first.memory.close()
+
+        self.assertEqual([r.id for r in self.boot().rules], [])
+
+    def test_presets_are_not_added_twice(self):
+        """preset_rules runs on every start. Before rules persisted that was
+        harmless; now it would stack three more copies per restart, and a
+        preset you deleted would come back looking like a bug."""
+        first = self.boot()
+        first.preset_rules()
+        self.assertEqual(len(first.rules), 3)
+        first.memory.close()
+
+        second = self.boot()
+        second.preset_rules()
+        self.assertEqual(len(second.rules), 3)
+
+    def test_a_deleted_preset_does_not_reappear(self):
+        first = self.boot()
+        first.preset_rules()
+        first.remove_rule(first.rules[0].id)
+        first.memory.close()
+
+        second = self.boot()
+        second.preset_rules()
+        self.assertEqual(len(second.rules), 2)
+
+    def test_rules_come_back_in_the_order_they_were_written(self):
+        first = self.boot()
+        for text in ("Tell me when a person is seen", "Tell me when a vehicle is seen"):
+            first.add_rule(text)
+        written = [r.name for r in first.rules]
+        first.memory.close()
+
+        self.assertEqual([r.name for r in self.boot().rules], written)
+
+    def test_a_restored_rule_still_evaluates(self):
+        """Round-tripping through JSON must not quietly drop a condition."""
+        first = self.boot()
+        first.add_rule("Notify my phone if someone waits more than 30 seconds")
+        first.memory.close()
+
+        restored = self.boot().rules[0]
+        self.assertEqual(restored.subject, "person")
+        self.assertEqual(restored.min_dwell_s, 30.0)
+        self.assertIn("push", restored.channels)
+
+
 class BedrockThroughTheWholePipeline(unittest.TestCase):
     """The Bedrock rung end to end, with only its transport stubbed.
 

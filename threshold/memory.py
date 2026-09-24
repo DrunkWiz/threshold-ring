@@ -19,6 +19,7 @@ on a device that is two days old.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -46,6 +47,16 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_at ON events (at);
 CREATE INDEX IF NOT EXISTS events_subject ON events (subject);
+
+-- Rules live here rather than in memory because a rule is something a person
+-- wrote. Losing it on restart makes "tell me when..." a lie. Stored as JSON
+-- so this table does not have to know the shape of a Rule, which keeps the
+-- dependency pointing one way.
+CREATE TABLE IF NOT EXISTS rules (
+    id TEXT PRIMARY KEY,
+    created_at REAL NOT NULL,
+    payload TEXT NOT NULL
+);
 """
 
 
@@ -117,6 +128,27 @@ class Memory:
             self.record(event)
             count += 1
         return count
+
+    # -- rules -------------------------------------------------------------
+
+    def save_rule(self, rule: dict[str, Any], *, created_at: float | None = None) -> None:
+        """Store a rule as written. Re-saving the same id updates it in place."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO rules (id, created_at, payload) VALUES (?,?,?)",
+            (rule["id"], created_at if created_at is not None else self._clock(), json.dumps(rule)),
+        )
+        self._conn.commit()
+
+    def delete_rule(self, rule_id: str) -> bool:
+        cur = self._conn.execute("DELETE FROM rules WHERE id = ?", (rule_id,))
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def rules(self) -> list[dict[str, Any]]:
+        """Every stored rule, oldest first, so the interface lists them in the
+        order they were written rather than however SQLite feels."""
+        rows = self._conn.execute("SELECT payload FROM rules ORDER BY created_at, id").fetchall()
+        return [json.loads(row["payload"]) for row in rows]
 
     def clear(self, *, source: str | None = None) -> int:
         cur = (

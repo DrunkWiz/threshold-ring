@@ -38,7 +38,7 @@ class Threshold:
         self.chain = chain or Chain(build_chain())
         self.perception = Perception(self.chain, clock=clock)
         self.notifier = Notifier(ntfy_topic=config.ntfy_topic or None)
-        self.rules: list[Rule] = []
+        self.rules: list[Rule] = [Rule.from_dict(d) for d in self.memory.rules()]
         self.token: str = config.ring_token
         self._opener = opener
         self._device: Any = None
@@ -169,15 +169,24 @@ class Threshold:
     def add_rule(self, text: str) -> dict[str, Any]:
         rule, attempts = compile_rule(text, self.chain)
         self.rules.append(rule)
+        self.memory.save_rule(rule.to_dict())
         return {"rule": rule.to_dict(), "explanation": rule.explain(), "attempts": attempts}
 
     def remove_rule(self, rule_id: str) -> bool:
         before = len(self.rules)
         self.rules = [r for r in self.rules if r.id != rule_id]
+        self.memory.delete_rule(rule_id)
         return len(self.rules) != before
 
     def preset_rules(self) -> None:
-        """Three rules that make the product useful the moment it opens."""
+        """Three rules that make the product useful the moment it opens.
+
+        Only into an empty store. Rules persist now, so adding these on every
+        start would hand you three more copies each time, and a preset you
+        deleted would reappear on the next restart looking like a bug.
+        """
+        if self.rules:
+            return
         for text in (
             "Say out loud when a person is at the door",
             "Tell me if a vehicle stops in the driveway after dark",
