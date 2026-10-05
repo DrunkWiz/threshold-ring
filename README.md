@@ -149,7 +149,7 @@ not be a stack trace.
 python3 scripts/run_tests.py
 ```
 
-122 tests, about two seconds, **no network**: the runner replaces
+134 tests, about two seconds, **no network**: the runner replaces
 `socket.connect` so anything reaching past localhost fails loudly. That is a
 guard, not a claim — and `tests/test_network_guard.py` proves the guard bites.
 

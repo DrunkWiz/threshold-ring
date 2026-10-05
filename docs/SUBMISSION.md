@@ -70,7 +70,7 @@ browser APIs.
   answered — `described by fake · skipped bedrock` — rather than passing a
   canned sentence off as perception.
 
-122 tests run in about two seconds with the network cut off by a guard in
+134 tests run in about two seconds with the network cut off by a guard in
 the test runner.
 
 ## Challenges
