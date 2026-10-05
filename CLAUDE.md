@@ -85,13 +85,24 @@ and video tracks live), a frame pulled off that stream and carried through
 perception, narration and the rules engine. Nothing in that path needed
 fixing. The token countdown was correct throughout, including at expiry.
 
-**Bedrock has still never run, and on this AWS account it cannot.** The
-account sits inside an AWS Organization whose service control policy
-explicitly denies `bedrock:CallWithBearerToken`, so a Bedrock API key is
-refused no matter what permissions are attached. An IAM access key with SigV4
-calls `bedrock:InvokeModel` instead, a different action that the policy may
-not deny — untested as of 23 Sep, and worth five minutes because it would
-restore the AWS Builder entry.
+**Bedrock has still never run, and on this AWS account it cannot.** Account
+755400271187 sits inside AWS Organization o-f9bzz6q6aa (management account
+103021624162), whose service control policy p-9pjv83er explicitly denies both
+`bedrock:CallWithBearerToken` **and** `bedrock:PutUseCaseForModelAccess`.
+
+That second denial is the deadlock, confirmed 5 Oct by calling the control
+plane directly with SigV4. `bedrock:InvokeModel` is *not* denied - it returns
+the "use case details have not been submitted" 404 rather than a 403 - but
+the only call that submits those details is denied, and the console uses the
+same API, so the console route fails identically. Nothing done from inside
+this account can unblock it.
+
+Three ways out, in order of effort: the Organization's management account
+submits the form once (it is inherited by every member account); or a plain
+personal AWS account outside the Organization is used instead, where there is
+no SCP at all and a demo's worth of Bedrock calls costs pennies; or the AWS
+Builder mini challenge is dropped and `docs/SUBMISSION.md` rewritten, since it
+currently claims frames are sent to Bedrock.
 
 **Perception now runs locally instead**, on a vision model through Ollama
 (`threshold/providers/ollama.py`). Verified end to end on 23 Sep: the model
